@@ -1,0 +1,41 @@
+version: '3.6'
+
+services:
+  greenlight:
+    labels:
+      - "traefik.backend=greenlight"
+      - "traefik.docker.network=web"
+      - "traefik.default.protocol=http"
+      # - "traefik.domain=bbb.local.m3"
+      # - "traefik.frontend.passHostHeader=true"
+      # - traefik.frontend.rule=Host:fe.bbb.local.m3
+      - "traefik.frontend.rule=Host:greenlight.local.m3"
+      - "traefik.port=80"
+      - "traefik.enable=true"
+    networks:
+      - web
+    hostname: greenlight.local.m3
+    entrypoint: [bin/start]
+    image: bigbluebutton/greenlight:v2
+    container_name: greenlight-v2
+    env_file: env
+    # environment:
+    #   - http_proxy=http://host.docker.internal:18080/
+    #   - https_proxy=http://host.docker.internal:18080/
+    #   - no_proxy=localhost,127.0.0.1
+    restart: unless-stopped
+    # ports:
+    #   - 5000:80
+    volumes:
+      - ./db/production:/usr/src/app/db/production
+      - ./log:/usr/src/app/log
+#    logging:
+#      driver: $LOG_DRIVER
+#      options:
+#        syslog-address: $LOG_ADDRESS
+#        tag: $LOG_TAG
+
+networks:
+  web:
+    external:
+      name: web

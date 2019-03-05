@@ -1,0 +1,54 @@
+#https://docs.docker.com/compose/wordpress/
+version: '3.6'
+
+services:
+  wordpress:
+    image: wordpress:latest
+    restart: always
+    # ports:
+    #   - 8000:80
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: password
+      WORDPRESS_DB_NAME: wordpress
+    labels:
+      - traefik.backend=wordpress
+      - traefik.enable=true
+      - traefik.frontend.rule=Host:wordpress.local.m3
+      - traefik.docker.network=web
+      - traefik.port=80
+    networks:
+      - backend
+      - web
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    restart: always
+    hostname: db
+    container_name: db
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+      # MYSQL_ROOT_PASSWORD: somewordpress
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: password
+    networks:
+      - backend
+    volumes:
+       - mysql_data:/var/lib/mysql
+    labels:
+      - traefik.enable=false
+
+networks:
+  web:
+    external: true
+    name: web
+  backend:
+    external: false
+    name: backend
+
+volumes:
+    mysql_data:

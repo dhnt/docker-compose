@@ -1,0 +1,68 @@
+#
+# https://raw.githubusercontent.com/jboss-dockerfiles/keycloak/master/docker-compose-examples/keycloak-postgres.yml
+#
+
+version: '3.6'
+
+# volumes:
+#   postgres_data:
+#       # driver: local
+
+services:
+
+  postgres:
+      image: postgres
+      hostname: keycloak-db
+      container_name: keycloak-db
+      volumes:
+        # - postgres_data:/var/lib/postgresql/data
+        - ./data/pg:/var/lib/postgresql/data
+
+      environment:
+        POSTGRES_DB: keycloak
+        POSTGRES_USER: keycloak
+        POSTGRES_PASSWORD: password
+      labels:
+          - traefik.enable=false
+      networks:
+        - backend
+
+  keycloak:
+      image: jboss/keycloak
+      hostname: keycloak
+      environment:
+        DB_VENDOR: POSTGRES
+        DB_ADDR: keycloak-db
+        DB_DATABASE: keycloak
+        DB_USER: keycloak
+        DB_PASSWORD: password
+        KEYCLOAK_USER: admin
+        KEYCLOAK_PASSWORD: Pa55w0rd
+        # KEYCLOAK_LOGLEVEL: DEBUG
+        PROXY_ADDRESS_FORWARDING: 'true'
+        # Uncomment the line below if you want to specify JDBC parameters. The parameter below is just an example, and it shouldn't be used in production without knowledge. It is highly recommended that you read the PostgreSQL JDBC driver documentation in order to use it.
+        #JDBC_PARAMS: "ssl=true"
+      labels:
+        - traefik.backend=keycloak
+        - traefik.enable=true
+        # - traefik.frontend.rule=Host:keycloak.local.dhnt.io,auth.local.dhnt.io
+        - traefik.frontend.rule=Host:keycloak.local.m3,auth.local.m3
+        - traefik.frontend.passHostHeader=true
+        - traefik.backend.loadbalancer.sticky=true
+        - traefik.docker.network=web
+        - traefik.port=8080
+      networks:
+        - backend
+        - web
+      ports:
+        - 8085:8080
+      depends_on:
+        - postgres
+
+networks:
+  web:
+    external: true
+    name: web
+  backend:
+    external: false
+    name: backend

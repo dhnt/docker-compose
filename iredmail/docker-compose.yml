@@ -1,0 +1,55 @@
+# https://github.com/lejmr/iredmail-docker
+# https://docs.iredmail.org/used.components.html
+# https://docs.iredmail.org/install.iredmail.on.debian.ubuntu.html#access-webmail-and-other-web-applications
+# https://docs.iredmail.org/network.ports.html
+#
+# docker run --privileged -p 80:80 -p 443:443 \
+#            -h HOSTNAME.DOMAIN \
+#            -e "MYSQL_ROOT_PASSWORD=password" \
+#            -e "SOGO_WORKERS=1" \
+#            -e "TZ=Europe/Prague" \
+#            -e "POSTMASTER_PASSWORD=password" \
+#            -e "IREDAPD_PLUGINS=['reject_null_sender', 'reject_sender_login_mismatch', 'greylisting', 'throttle', 'amavisd_wblist', 'sql_alias_access_policy']" \
+#            -v $PWD/data/mysql:/var/lib/mysql \
+#            -v $PWD/data/vmail:/var/vmail \
+#            -v $PWD/data/clamav:/var/lib/clamav \
+#            --name=iredmail lejmr/iredmail:mysql-latest
+#
+version: '3.6'
+
+services:
+  iredmail:
+    hostname: iredmail.local.m3
+    environment:
+      - "MYSQL_ROOT_PASSWORD=password"
+      - "SOGO_WORKERS=1"
+      - "TZ=America/Los_Angeles"
+      - "POSTMASTER_PASSWORD={PLAIN}password"
+      - "IREDAPD_PLUGINS=['reject_null_sender', 'reject_sender_login_mismatch', 'greylisting', 'throttle', 'amavisd_wblist', 'sql_alias_access_policy']"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ./data/vmail:/var/vmail
+      - ./data/clamav:/var/lib/clamav
+    container_name: iredmail
+    image: lejmr/iredmail:mysql-latest
+    # ports:
+    #   - 5080:80/tcp
+    #   - 5443:443/tcp
+    restart: always
+    labels:
+      - "traefik.backend=iredmail"
+      - "traefik.docker.network=web"
+      - "traefik.frontend.passHostHeader=true"
+      - "traefik.frontend.entryPoints=https"
+      # - "traefik.frontend.headers.SSLRedirect=true"
+      - "traefik.frontend.rule=Host:iredmail.local.m3"
+      - "traefik.protocol=http"
+      - "traefik.port=80"
+      - "traefik.enable=true"
+    networks:
+      - web
+
+networks:
+  web:
+    external:
+      name: web
