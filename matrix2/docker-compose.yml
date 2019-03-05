@@ -1,0 +1,176 @@
+# This compose file is compatible with Compose itself, it might need some
+# adjustments to run properly with stack.
+# https://github.com/matrix-org/synapse/blob/master/contrib/docker/docker-compose.yml
+# https://github.com/matrix-org/synapse/blob/master/docker/README.md
+# https://github.com/hoohoot/synapse-keycloak-adapter/blob/master/docker-compose.yml
+
+version: '3.6'
+
+services:
+
+  synapse:
+    # build:
+    #     context: ../..
+    #     dockerfile: docker/Dockerfile
+    # image: docker.io/matrixdotorg/synapse:latest
+    # image: asperitus/synapse:latest
+    image: matrixdotorg/synapse:latest
+    hostname: synapse
+    # Since synapse does not retry to connect to the database, restart upon
+    # failure
+    restart: unless-stopped
+    # See the readme for a full documentation of the environment settings
+    environment:
+      - SYNAPSE_SERVER_NAME=matrix.local.m3
+      - SYNAPSE_REPORT_STATS=no
+      - SYNAPSE_ENABLE_REGISTRATION=no
+      - SYNAPSE_LOG_LEVEL=INFO
+      - POSTGRES_PASSWORD=changeme
+      - SYNAPSE_NO_TLS=yes
+      - SYNAPSE_CONFIG_PATH=/data/server_config
+    volumes:
+        - synapse:/data
+        - synapse-media:/data/media
+        - synapse-uploads:/data/uploads
+        - ./data/server_config:/data/server_config
+      # You may either store all the files in a local folder
+      # - synapse:/data
+      # - ./data/server_config:/data/server_config
+      # - ./data/media:/data/media
+
+      # - ./data/files:/data
+      # - ./data/server_config:/data/server_config
+      # .. or you may split this between different storage points
+      # - ./files:/data
+      # - /path/to/ssd:synapse-data:/data
+      # - /path/to/large_hdd:/data/media
+    # In order to expose Synapse, remove one of the following, you might for
+    # instance expose the TLS port directly:
+    # ports:
+    #   - 8008:8008/tcp
+    #   - 8448:8448/tcp
+    # ... or use a reverse proxy, here is an example for traefik:
+    labels:
+      - traefik.backend=synapse
+      - traefik.enable=true
+      - traefik.frontend.rule=Host:matrix.local.m3
+      - traefik.docker.network=web
+      - traefik.port=8008
+    networks:
+      backend:
+        aliases: 
+          - matrix.local.m3
+      web:
+    depends_on:
+      - db
+        # condition: service_healthy
+
+  db:
+    image: docker.io/postgres:10-alpine
+    hostname: matrix-db
+    container_name: matrix-db
+    # Change that password, of course!
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=synapse
+      - POSTGRES_PASSWORD=changeme
+    volumes:
+      # You may store the database tables in a local folder..
+      # - ./data/schemas:/var/lib/postgresql/data
+      - postgres:/var/lib/postgresql/data
+      # .. or store them on some high performance storage for better results
+      # - /path/to/ssd/storage:/var/lib/postgresql/data
+    labels:
+      - traefik.enable=false
+    networks:
+      - backend
+
+  #
+  mxisd:
+    image: kamax/mxisd
+    restart: unless-stopped
+    volumes:
+    - mxisd:/var/mxisd
+    - ./mxisd.yaml:/etc/mxisd/mxisd.yaml
+    # ports:
+    # - 8090:8090
+    labels:
+      - traefik.backend=mxisd
+      - traefik.enable=true
+      - traefik.frontend.rule=Host:matrixid.local.m3
+      - traefik.docker.network=web
+      - traefik.port=8090
+    networks:
+      backend:
+          aliases:
+            - matrixid.local.m3
+      web:
+
+  # keycloak-adapter:
+  #   image: hoohoot/synapse-keycloak-adapter:latest
+  #   restart: unless-stopped
+  #   # ports:
+  #   #   - 8480:8080
+  #   environment:
+  #     - KEYCLOAK_HOST=keycloak
+  #     - SYNAPSE_HOST=synapse
+  #     - REALM=STEM-Academy
+  #     - KEYCLOAK_CLIENT_ID=1ea0b0ac-7b0f-47ff-ac7a-01e799b3a1fe
+  #     - KEYCLOAK_CLIENT_SECRET=eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI3OWY3NzI5YS05OTZkLTRjNmItYWQ4MC0yNzcwY2MyNjdkOWUifQ.eyJqdGkiOiIxZWEwYjBhYy03YjBmLTQ3ZmYtYWM3YS0wMWU3OTliM2ExZmUiLCJleHAiOjE1NDk5NTYwNzUsIm5iZiI6MCwiaWF0IjoxNTQ5ODY5Njc1LCJpc3MiOiJodHRwczovL2tleWNsb2FrLmxvY2FsLm0zL2F1dGgvcmVhbG1zL1NURU0tQWNhZGVteSIsImF1ZCI6Imh0dHBzOi8va2V5Y2xvYWsubG9jYWwubTMvYXV0aC9yZWFsbXMvU1RFTS1BY2FkZW15IiwidHlwIjoiSW5pdGlhbEFjY2Vzc1Rva2VuIn0.X-_330PTWXtm1Q2KSMjrtug-ALG2LRAyUml8j8GKC4M
+  #     - KEYCLOAK_SEARCH_USER=user
+  #     - KEYCLOAK_SEARCH_PASSWORD=password
+  #   labels:
+  #     - traefik.enable=false
+  #   networks:
+  #     - backend
+  #     - web
+
+  riot:
+    build:
+      context: https://github.com/asperitus/docker-riot.git
+      args:
+        version: v0.17.9
+    image: asperitus/riot-web
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.backend=riot"
+      - "traefik.enable=true"
+      - traefik.docker.network=web
+      - "traefik.frontend.rule=Host:riot.local.m3"
+      - "traefik.port=80"
+    volumes:
+      - ./config.json:/etc/riot-web/config.json
+      # - ./nginx.conf:/etc/nginx/nginx.conf:ro 
+    depends_on:
+      - synapse
+        # condition: service_started
+
+  # dba:
+  #   image: adminer:4.6.3-standalone
+  #   labels:
+  #     - traefik.backend=dba
+  #     - traefik.frontend.rule=Host:dba.local.m3
+  #     - traefik.docker.network=web
+  #     - traefik.port=8080
+  #   networks:
+  #     - backend
+  #     - web
+  #   depends_on:
+  #     - db
+
+networks:
+  web:
+    external: true
+    name: web
+  backend:
+    external: false
+    name: backend
+
+volumes:
+  synapse:
+  synapse-media:
+  synapse-uploads:
+  postgres:
+  mxisd:

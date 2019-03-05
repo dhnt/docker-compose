@@ -1,0 +1,141 @@
+version: "3.6"
+
+services:
+  synapse:
+    image: matrixdotorg/synapse:latest
+    hostname: synapse
+    restart: unless-stopped
+    environment:
+      - SYNAPSE_SERVER_NAME=matrix.local.m3
+      - SYNAPSE_REPORT_STATS=no
+      - SYNAPSE_ENABLE_REGISTRATION=yes
+      - SYNAPSE_LOG_LEVEL=INFO
+      - SYNAPSE_NO_TLS=yes
+      - POSTGRES_DB=synapse
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=matrix
+      - POSTGRES_PASSWORD=changeme
+    # ports:
+    #   - 8448:8448
+    #   - 8008:8008
+    volumes:
+     - synapse-data:/data
+     - synapse-data:/media_store
+     - synapse-data:/uploads
+    depends_on:
+      - postgres
+    labels:
+      - traefik.backend=synapse
+      - traefik.enable=true
+      - traefik.frontend.rule=Host:matrix.local.m3
+      - traefik.docker.network=web
+      - traefik.port=8008
+    networks:
+      backend:
+        aliases: 
+          - matrix.local.m3
+      web:
+
+  # riot:
+  #   image: avhost/docker-matrix-riot
+  #   hostname: riot
+  #   restart: unless-stopped
+  #   entrypoint:
+  #     - "/bin/sh"
+  #     - -ecx
+  #     - | 
+  #       echo "-p 8765" > /data/riot.im.conf; /start.sh
+  #   ports:
+  #    - 8080:8765
+  #   volumes:
+  #    - riot-data:/data
+  #   depends_on:
+  #     - synapse
+  # coturn:
+  #   image: instrumentisto/coturn
+  #   hostname: coturn
+  #   ports:
+  #     - "3478:3478/udp" # STUN/TURN UDP
+  #     - "3478:3478/tcp" # STUN/TURN TCP
+  #     - "3479:3479/udp" # STUN/TURN UDP Alt port (RFC5780 support)
+  #     - "3479:3479/tcp" # STUN/TURN TCP Alt port (RFC5780 support)
+  #     - "5349:5349/udp" # STUN/TURN DTLS
+  #     - "5349:5349/tcp" # STUN/TURN TLS
+  #     - "5350:5350/udp" # STUN/TURN DTLS Alt port (RFC5780 support)
+  #     - "5350:5350/tcp" # STUN/TURN TLS Alt port (RFC5780 support)
+  #     - "49152:65535/udp" # UDP media ports for TURN relay
+  #   # environment:
+  #   #   PORT: 3478
+  #   #   ALT_PORT: 3479
+  #   #   TLS_PORT: 5349
+  #   #   TLS_ALT_PORT: 5350
+  #   #   MIN_PORT: 49152
+  #   #   MAX_PORT: 65535
+  #   #   JSON_CONFIG: '{"config":["no-auth"]}'
+  #   volumes:
+  #    - coturn-data:/var/lib/coturn
+
+  postgres:
+    image: docker.io/postgres:10-alpine
+    hostname: postgres
+    environment:
+      - POSTGRES_USER=matrix
+      - POSTGRES_PASSWORD=changeme
+      - POSTGRES_DB=synapse
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # ports:
+    #   - 5432:5432
+    labels:
+      - traefik.enable=false
+    networks:
+      - backend
+
+  riot:
+    build:
+      context: https://github.com/asperitus/docker-riot.git
+      args:
+        version: v0.17.9
+    image: asperitus/riot-web
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.backend=riot"
+      - "traefik.enable=true"
+      - traefik.docker.network=web
+      - "traefik.frontend.rule=Host:riot.local.m3"
+      - "traefik.port=80"
+    volumes:
+      - ./config.json:/etc/riot-web/config.json
+      # - ./nginx.conf:/etc/nginx/nginx.conf:ro 
+    depends_on:
+      - synapse
+        # condition: service_started
+
+    # dba:
+    #   image: adminer:4.6.3-standalone
+    #   labels:
+    #     - traefik.backend=dba
+    #     - traefik.frontend.rule=Host:dba.local.m3
+    #     - traefik.docker.network=web
+    #     - traefik.port=8080
+    #   networks:
+    #     - backend
+    #     - web
+    #   depends_on:
+    #     - db
+
+networks:
+  web:
+    external: true
+    name: web
+  backend:
+    external: false
+    name: backend
+
+volumes:
+  synapse-data:
+  riot-data:
+  coturn-data:
+  postgres-data:
