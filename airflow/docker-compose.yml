@@ -1,0 +1,91 @@
+version: "2"
+services:
+    redis:
+        image: redis:3.2
+        command: redis-server /etc/redis/redis.conf
+        volumes:
+            - ./config/redis/redis.conf:/etc/redis/redis.conf
+            - ./var/redis:/data
+
+    postgres:
+        image: postgres:9.6
+        # https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+        command: postgres -c logging_collector=on -c log_destination=stderr -c log_directory=/logs
+        environment:
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+        volumes:
+            - ./var/postgres/data:/var/lib/postgresql/data
+            - ./var/postgres/logs:/logs
+
+    webserver:
+        image: asperitus/airflow
+        restart: always
+        depends_on:
+            - postgres
+            - redis
+        environment:
+            - LOAD_EX=n
+            - FERNET_KEY=LR80iPpzBqNkEyH6r6N9ij1mEN9eG26mxrG46MoJMGE=
+            - EXECUTOR=Celery
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+        volumes:
+            - ./config/airflow:/app/airflow
+            - ./var/airflow:/var/airflow
+        ports:
+            - "8080:8080"
+        command: webserver
+
+    flower:
+        image: asperitus/airflow
+        restart: always
+        depends_on:
+            - redis
+        volumes:
+            - ./config/airflow:/app/airflow
+            - ./var/airflow:/var/airflow
+        environment:
+            - FERNET_KEY=LR80iPpzBqNkEyH6r6N9ij1mEN9eG26mxrG46MoJMGE=
+            - EXECUTOR=Celery
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+        ports:
+            - "5555:5555"
+        command: flower
+
+    scheduler:
+        image: asperitus/airflow
+        restart: always
+        depends_on:
+            - webserver
+        volumes:
+            - ./config/airflow:/app/airflow
+            - ./var/airflow:/var/airflow
+        environment:
+            - LOAD_EX=y
+            - FERNET_KEY=LR80iPpzBqNkEyH6r6N9ij1mEN9eG26mxrG46MoJMGE=
+            - EXECUTOR=Celery
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+        command: scheduler
+
+    worker:
+        image: asperitus/airflow
+        restart: always
+        depends_on:
+            - scheduler
+        volumes:
+            - ./config/airflow:/app/airflow
+            - ./var/airflow:/var/airflow
+        environment:
+            - FERNET_KEY=LR80iPpzBqNkEyH6r6N9ij1mEN9eG26mxrG46MoJMGE=
+            - EXECUTOR=Celery
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+        command: worker
