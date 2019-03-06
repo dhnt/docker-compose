@@ -1,0 +1,24 @@
+version: "3.6"
+
+services:
+  minio:
+    image: minio/minio:latest
+    command: minio server /data
+    container_name: minio
+    environment:
+      - MINIO_ACCESS_KEY=ac3
+      - MINIO_SECRET_KEY=secret88
+    ports:
+      - 9000:9000
+    volumes:
+      - data-minio:/data
+    networks:
+      backend:
+
+volumes:
+  data-minio:
+
+networks:
+  backend:
+    external: false
+    name: backend
