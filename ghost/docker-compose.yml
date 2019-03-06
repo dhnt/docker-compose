@@ -1,0 +1,70 @@
+version: "3.6"
+
+services:
+  # traefik:
+  #   image: traefik:latest
+  #   command: --docker
+  #   ports:
+  #     - 2080:80
+  #     - 2443:443
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.backend=dashboard"
+  #     - "traefik.frontend.rule=Host:traef.hakase-labs.io"
+  #     - "traefik.port=8080"
+  #   networks:
+  #     - traefiknet
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - ./traefik.toml:/traefik.toml
+  #     - ./acme.json:/acme.json
+  #   container_name: traefik
+  #   restart: always
+
+  ghost:
+    image: ghost:1-alpine
+    restart: always
+    ports:
+      - 2368
+    volumes:
+      - ./blog:/var/lib/ghost/content
+    labels:
+      - "traefik.enabled=true"
+      - "traefik.backend=ghost"
+      - "traefik.frontend.rule=Host:gho.hakase-labs.io"
+      - "traefik.docker.network=traefiknet"
+      - "traefik.port=2368"
+    networks:
+      - internal
+      - traefiknet
+    environment:
+      database__client: mysql
+      database__connection__host: mysql
+      database__connection__user: ghost
+      database__connection__password: ghostdbpass
+      database__connection__database: ghostdb
+    container_name: ghost
+    depends_on:
+      - mysql
+      - traefik
+  mysql:
+    image: mysql:5.7
+    restart: always
+    volumes:
+      - ./data:/var/lib/mysql
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - internal
+    environment:
+      MYSQL_ROOT_PASSWORD: mypassword
+      MYSQL_USER: ghost
+      MYSQL_PASSWORD: ghostdbpass
+      MYSQL_DATABASE: ghostdb
+    container_name: mysql
+
+networks:
+  traefiknet:
+    external: true
+  internal:
+    external: false

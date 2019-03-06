@@ -1,0 +1,9 @@
+#https://github.com/magicmark/composerize
+version: "3"
+services:
+    theia:
+        ports:
+            - '3000:3000'
+        volumes:
+            - './data:/home/project:cached'
+        image: 'theiaide/theia:next'

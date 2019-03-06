@@ -1,0 +1,22 @@
+version: "3.6"
+
+services:
+  #
+  traefik:
+    image: traefik:1.7.2-alpine
+    # command: --api --docker --docker.domain=local.m3 --logLevel=DEBUG
+    ports:
+      - "28080:80"
+      - "28081:8080"
+      # - "28443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./etc/traefik:/etc/traefik
+
+networks:
+  backend:
+    external: false
+    name: backend
+  web:
+    external: false
+    name: web

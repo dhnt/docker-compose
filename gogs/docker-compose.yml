@@ -1,0 +1,45 @@
+##
+
+version: "3.6"
+
+services:
+  gogs:
+    image: gogs/gogs:latest
+    restart: always
+    ports:
+      - "10022:22"
+      - "3000:3000"
+    environment:
+      - "RUN_CROND=true"
+    networks:
+      - backend
+      - web
+    volumes:
+      - data-gogs:/data
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:9.5-alpine
+    volumes:
+      - data-postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=gogs
+      - POSTGRES_USER=gogs
+      - POSTGRES_PASSWORD=password
+    # labels:
+    #     - traefik.enable=false
+    networks:
+      - backend
+
+volumes:
+  data-gogs:
+  data-postgres:
+
+networks:
+  backend:
+    external: false
+    name: backend
+  web:
+    external: false
+    name: web
