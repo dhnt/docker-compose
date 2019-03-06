@@ -1,0 +1,51 @@
+version: "3.6"
+
+services:
+    docker_compose_ui:
+        restart: always
+        image: francescou/docker-compose-ui:1.13.0
+        container_name: docker_compose_ui
+        hostname: docker_compose_ui
+        working_dir: /opt/docker-compose-projects/
+        environment:
+        - 'WEB_CONSOLE_PATTERN=/web-console/?cid={containerName}&cmd={command}'
+        #working_dir: /home/user/docker-compose-ui/demo-projects
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ../:/opt/docker-compose-projects
+            # - /home/user/docker-compose-ui/demo-projects:/home/user/docker-compose-ui/demo-projects
+        networks:
+        - web
+        labels:
+        - "traefik.enable=true"
+        - "traefik.backend.loadbalancer.stickiness=true"
+        - "traefik.backend=nginx"
+        - "traefik.docker.network=web"
+        - "traefik.entrypoints=http"
+        - "traefik.frontend.passHostHeader=true"
+        - "traefik.frontend.rule=Host:dui.local.m3"
+        - "traefik.port=5000"
+    # web_console:
+    #     image: bitbull/docker-exec-web-console
+    #     environment:
+    #     - 'CONTEXT_PATH=/web-console/'
+    #     read_only: true
+    #     restart: always
+    #     volumes:
+    #     - /var/run/docker.sock:/var/run/docker.sock
+    # nginx:
+    #     image: nginx:alpine
+    #     read_only: true
+    #     restart: always
+    #     # ports:
+    #     # - 8080:80
+    #     volumes:
+    #     - ./default.conf:/etc/nginx/conf.d/default.conf:ro
+    #     - /var/cache/nginx/
+    #     - /var/run/
+    #     - /logs/
+
+networks:
+  web:
+    external: false
+    name: web

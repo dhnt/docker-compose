@@ -8,17 +8,26 @@ services:
     environment:
       - MINIO_ACCESS_KEY=ac3
       - MINIO_SECRET_KEY=secret88
-    ports:
-      - 9000:9000
+    # ports:
+    #   - 9000:9000
     volumes:
       - data-minio:/data
     networks:
-      backend:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend.loadbalancer.stickiness=true"
+      - "traefik.backend=minio"
+      - "traefik.docker.network=web"
+      - "traefik.entrypoints=http"
+      - "traefik.frontend.passHostHeader=true"
+      - "traefik.frontend.rule=Host:minio.local.m3"
+      - "traefik.port=9000"
 
 volumes:
   data-minio:
 
 networks:
-  backend:
+  web:
     external: false
-    name: backend
+    name: web

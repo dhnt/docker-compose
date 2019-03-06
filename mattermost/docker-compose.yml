@@ -83,7 +83,7 @@ services:
 
 networks:
   web:
-    external: true
+    external: false
     name: web
   mm-in:
     external: false

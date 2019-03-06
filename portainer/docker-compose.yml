@@ -1,15 +1,32 @@
-version: '2'
+#https://portainer.readthedocs.io/en/latest/deployment.html
+version: "3.6"
 
 services:
   portainer:
     image: portainer/portainer
-    restart: always
-    ports:
-      - "9000:9000"
     command: -H unix:///var/run/docker.sock
+    restart: always
+    # ports:
+    #   - 9000:9000
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
+      - data-portainer:/data
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.backend.loadbalancer.stickiness=true"
+      - "traefik.backend=portainer"
+      - "traefik.docker.network=web"
+      - "traefik.entrypoints=http"
+      - "traefik.frontend.passHostHeader=true"
+      - "traefik.frontend.rule=Host:portainer.local.m3"
+      - "traefik.port=9000"
 
 volumes:
-  portainer_data:
+  data-portainer:
+
+networks:
+  web:
+    external: false
+    name: web
