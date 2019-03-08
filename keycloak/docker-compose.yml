@@ -48,7 +48,7 @@ services:
         # - traefik.frontend.rule=Host:keycloak.local.dhnt.io,auth.local.dhnt.io
         - traefik.frontend.rule=Host:keycloak.local.m3,auth.local.m3
         - traefik.frontend.passHostHeader=true
-        - traefik.backend.loadbalancer.sticky=true
+        - traefik.backend.loadbalancer.stickiness=true
         - traefik.docker.network=web
         - traefik.port=8080
       networks:
