@@ -1,3 +1,6 @@
+
+#http://docs.bigbluebutton.org/install/docker.html
+#docker run -p 80:80/tcp -p 443:443/tcp -p 1935:1935 -p 5066:5066 -p 3478:3478 -p 3478:3478/udp bigbluebutton/bigbluebutton -h IP_ADDRESS
 version: '3.6'
 
 services:
@@ -6,11 +9,13 @@ services:
       - "traefik.backend=bbb"
       - "traefik.docker.network=web"
       - "traefik.frontend.passHostHeader=true"
-      - "traefik.frontend.rule=Host:bbb.local.m3"
+      - "traefik.frontend.rule=Host:bbb.local.m3,bbb.921rt1c2kvjv18j82zcahw6khaggawyhagr4p63xsxfkbpd16h901j.m3"
       - "traefik.port=80"
       - "traefik.enable=true"
     networks:
-      - web
+      web:
+        aliases:
+          - bbb.local.m3
     container_name: bbb
     hostname: bbb.local.m3
     image: bigbluebutton/bigbluebutton:latest
@@ -22,51 +27,56 @@ services:
     #   - 5066:5066/tcp
     #   - 3478:3478/tcp
     #   - 3478:3478/udp
-
     #  - 32730-32768:32730-32768/udp
     #  - 2202:2202
     environment:
      - HOST=bbb.local.m3
     cap_add:
      - NET_ADMIN
-
-  # greenlight:
-  #   labels:
-  #     - "traefik.backend=greenlight"
-  #     - "traefik.docker.network=web"
-  #     - "traefik.default.protocol=http"
-  #     # - "traefik.domain=bbb.local.m3"
-  #     - "traefik.frontend.passHostHeader=true"
-  #     # - "traefik.frontend.rule=Host:fe.bbb.local.m3"
-  #     - "traefik.frontend.rule=Host: fe.bbb.local.m3; PathPrefix: /b"
-  #     - "traefik.port=80"
-  #     - "traefik.enable=true"
-  #   image: bigbluebutton/greenlight
-  #   restart: unless-stopped
-  #   networks:
-  #     - web
-  #   hostname: fe.bbb.local.m3
-  #   entrypoint: [bin/start]
-  #   container_name: greenlight
-  #   environment:
-  #     # BIGBLUEBUTTON_ENDPOINT: https://${SERVER_DOMAIN}/bigbluebutton/
-  #     # BIGBLUEBUTTON_SECRET: ${SHARED_SECRET}
-  #     # SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-  #     # ALLOW_GREENLIGHT_ACCOUNTS: "true"
-  #     - SECRET_KEY_BASE=65f3db279dde4a41ead326fc60b0b2e4c5ce9579073c3c79353188bddc29b958fd2d436c4709fc53795e781b48ed549021f19f66e93cbaea94e2d0f610dd864a
-  #     - BIGBLUEBUTTON_ENDPOINT=http://bbb.local.m3/bigbluebutton/
-  #     - BIGBLUEBUTTON_SECRET=3ce47f0abd9beac3a66520c43e108820
-  #     - ALLOW_GREENLIGHT_ACCOUNTS=true
-
-  #     # - SMTP_SERVER=smtp.gmail.com
-  #     # - SMTP_PORT=587
-  #     # - SMTP_DOMAIN=gmail.com
-  #     # - SMTP_AUTH=plain
-  #     # - SMTP_STARTTLS_AUTO=true
-  #     # - RELATIVE_URL_ROOT=/b
-  #   volumes:
-  #     - ./db:/usr/src/app/db/production
-  #     - ./log:/usr/src/app/log
+  # https://github.com/bigbluebutton/greenlight/blob/master/docker-compose.yml
+  greenlight:
+    labels:
+      - "traefik.backend=greenlight"
+      - "traefik.docker.network=web"
+      - "traefik.default.protocol=http"
+      - "traefik.frontend.passHostHeader=true"
+      - "traefik.frontend.rule=Host:greenlight.local.m3,greenlight.921rt1c2kvjv18j82zcahw6khaggawyhagr4p63xsxfkbpd16h901j.m3;PathPrefix:/b"
+      - "traefik.port=80"
+      - "traefik.enable=true"
+    entrypoint: [bin/start]
+    image: bigbluebutton/greenlight:v2
+    container_name: greenlight-v2
+    hostname: greenlight.local.m3
+    # https://github.com/bigbluebutton/greenlight/blob/master/sample.env
+    # docker run --rm bigbluebutton/greenlight:v2 bundle exec rake secret
+    # docker exec bbb bbb-conf --secret
+    # docker exec greenlight-v2 bundle exec rake conf:check
+    environment:
+      - SECRET_KEY_BASE=fecec475d6a359bee99ec8b1a48a34bb51c0e6ee948c9b9f96e34fccfcaa4da68c8cc1464fc0f2fb9545808b67dff57a3cdf15c8d4f546a5fa3a08594bf84f44
+      - BIGBLUEBUTTON_ENDPOINT=http://bbb.local.m3/bigbluebutton/
+      - BIGBLUEBUTTON_SECRET=6bbdc14d32df911075a5f3176adc1a0f
+      - ALLOW_GREENLIGHT_ACCOUNTS=true
+      # - SMTP_SERVER=smtp.gmail.com
+      # - SMTP_PORT=587
+      # - SMTP_DOMAIN=gmail.com
+      # - SMTP_AUTH=plain
+      # - SMTP_STARTTLS_AUTO=true
+      - RELATIVE_URL_ROOT=/b
+    restart: unless-stopped
+    # ports:
+    #   - 5000:80
+    volumes:
+      - ./db:/usr/src/app/db/production
+      - ./log:/usr/src/app/log
+    networks:
+      web:
+        aliases:
+          - greenlight.local.m3
+#    logging:
+#      driver: $LOG_DRIVER
+#      options:
+#        syslog-address: $LOG_ADDRESS
+#        tag: $LOG_TAG
 
 networks:
   web:
